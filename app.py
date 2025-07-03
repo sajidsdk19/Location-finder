@@ -518,7 +518,7 @@ def main():
         
         st.markdown("### 📝 Support")
         st.markdown("""
-        Need help with the plugin? Contact our support team at support@example.com
+        Need help with the plugin? Contact our support team at sajid@techscape.pk
         
         ### 🔄 Version
         Current version: 1.0.0  
