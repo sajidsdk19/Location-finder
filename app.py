@@ -52,7 +52,7 @@ def main():
         layout="centered"
     )
     
-    st.title("🌍 Location Detector")
+    st.title("🌍 Location Detector on Earth")
     st.write("This app detects your current location based on your device's IP address.")
     st.warning("For the most accurate results, please allow location access in your browser if prompted.")
     
