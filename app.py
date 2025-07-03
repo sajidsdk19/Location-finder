@@ -312,7 +312,7 @@ def main():
     st.title("📍 Precise Location Detector")
     
     # Create tabs for different approaches
-    tab1, tab2, tab3 = st.tabs(["🌐 Web Detector", "📊 Manual Input", "ℹ️ Instructions"])
+    tab1, tab2, tab3, tab4 = st.tabs(["🌐 Web Detector", "📊 Manual Input", "ℹ️ Instructions", "🔌 WordPress Plugin"])
     
     with tab1:
         st.markdown("""
@@ -439,6 +439,51 @@ def main():
         - **Desktop**: Varies widely (IP-based fallback)
         
         For best accuracy, use a smartphone with GPS enabled.
+        """)
+    
+    with tab4:
+        st.markdown("""
+        # 🌍 WordPress Location Detector Plugin
+        
+        Enhance your WordPress website with our easy-to-use location detection plugin. 
+        This plugin allows you to show location-based content to your visitors.
+        
+        ### Features:
+        - ✅ Simple installation and setup
+        - ✅ Automatic location detection
+        - ✅ Mobile-friendly design
+        - ✅ Lightweight and fast
+        - ✅ Compatible with all modern WordPress themes
+        
+        ### Requirements:
+        - WordPress 5.0 or higher
+        - PHP 7.4 or higher
+        - JavaScript enabled in visitor's browser
+        
+        ### Installation:
+        1. Download the plugin zip file below
+        2. Go to WordPress Admin > Plugins > Add New
+        3. Click "Upload Plugin" and select the downloaded zip file
+        4. Activate the plugin
+        5. Configure the settings in WordPress admin
+        """)
+        
+        # Add download button for the plugin
+        with open("geocity.zip", "rb") as file:
+            btn = st.download_button(
+                label="⬇️ Download WordPress Plugin",
+                data=file,
+                file_name="geocity-location-detector.zip",
+                mime="application/zip"
+            )
+        
+        st.markdown("### 📝 Support")
+        st.markdown("""
+        Need help with the plugin? Contact our support team at support@example.com
+        
+        ### 🔄 Version
+        Current version: 1.0.0
+        Last updated: July 2024
         """)
 
 if __name__ == "__main__":
