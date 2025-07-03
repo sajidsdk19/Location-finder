@@ -9,12 +9,12 @@ def get_location_from_coords(lat, lon):
     try:
         url = f'https://nominatim.openstreetmap.org/reverse?lat={lat}&lon={lon}&format=json&accept-language=en'
         headers = {'User-Agent': 'LocationDetector/1.0'}
-        response = requests.get(url, headers=headers)
+        response = requests.get(url, headers=headers, timeout=10)
         if response.status_code == 200:
             data = response.json()
             return data.get('address', {})
     except Exception as e:
-        st.error(f"Error getting location from coords: {e}")
+        st.error(f"Error getting location details: {e}")
     return {}
 
 def get_formatted_location(address):
@@ -38,325 +38,407 @@ def get_formatted_location(address):
     
     return ', '.join(components) if components else 'Unknown location'
 
-def inject_location_script():
-    """Inject JavaScript to get location and store in session state"""
-    location_js = f"""
-    <script>
-    function getLocationData() {{
-        if (navigator.geolocation) {{
-            navigator.geolocation.getCurrentPosition(
-                function(position) {{
-                    const lat = position.coords.latitude;
-                    const lon = position.coords.longitude;
-                    const accuracy = position.coords.accuracy;
+def create_location_detector():
+    """Create a simple HTML page that handles geolocation"""
+    location_html = """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8">
+        <title>Location Detector</title>
+        <style>
+            body {
+                font-family: 'Source Sans Pro', sans-serif;
+                margin: 20px;
+                text-align: center;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                color: white;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+            }
+            .container {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 30px;
+                border-radius: 15px;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+                max-width: 500px;
+                width: 90%;
+            }
+            button {
+                background: linear-gradient(45deg, #1E88E5, #1565C0);
+                color: white;
+                border: none;
+                padding: 15px 30px;
+                font-size: 18px;
+                border-radius: 25px;
+                cursor: pointer;
+                transition: all 0.3s;
+                box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+                margin: 10px;
+                min-width: 200px;
+            }
+            button:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+            }
+            button:disabled {
+                opacity: 0.6;
+                cursor: not-allowed;
+                transform: none;
+            }
+            .result {
+                margin-top: 20px;
+                padding: 20px;
+                background: rgba(255, 255, 255, 0.2);
+                border-radius: 10px;
+                display: none;
+            }
+            .error {
+                background: rgba(244, 67, 54, 0.8);
+                color: white;
+                padding: 15px;
+                border-radius: 10px;
+                margin-top: 20px;
+                display: none;
+            }
+            .loading {
+                margin: 20px 0;
+                display: none;
+            }
+            .spinner {
+                border: 3px solid rgba(255, 255, 255, 0.3);
+                border-radius: 50%;
+                border-top: 3px solid white;
+                width: 30px;
+                height: 30px;
+                animation: spin 1s linear infinite;
+                margin: 0 auto;
+            }
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            .coordinates {
+                background: rgba(255, 255, 255, 0.1);
+                padding: 15px;
+                border-radius: 8px;
+                margin: 10px 0;
+                font-family: monospace;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>📍 Location Detector</h1>
+            <p>Click the button below to detect your precise location</p>
+            
+            <button id="detectBtn" onclick="getLocation()">
+                🌍 Detect My Location
+            </button>
+            
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Getting your location...</p>
+            </div>
+            
+            <div id="result" class="result">
+                <h2>📍 Your Location:</h2>
+                <div id="locationName"></div>
+                <div id="coordinates" class="coordinates"></div>
+                <p id="accuracy"></p>
+                <button onclick="copyCoordinates()">📋 Copy Coordinates</button>
+                <button onclick="openInMaps()">🗺️ Open in Maps</button>
+            </div>
+            
+            <div id="error" class="error"></div>
+        </div>
+
+        <script>
+            let currentLat, currentLon, currentAccuracy;
+
+            function showLoading() {
+                document.getElementById('loading').style.display = 'block';
+                document.getElementById('detectBtn').disabled = true;
+                document.getElementById('result').style.display = 'none';
+                document.getElementById('error').style.display = 'none';
+            }
+
+            function hideLoading() {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('detectBtn').disabled = false;
+            }
+
+            function showError(message) {
+                hideLoading();
+                document.getElementById('error').textContent = message;
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('result').style.display = 'none';
+            }
+
+            function showResult(lat, lon, accuracy) {
+                hideLoading();
+                currentLat = lat;
+                currentLon = lon;
+                currentAccuracy = accuracy;
+                
+                document.getElementById('coordinates').innerHTML = 
+                    `Latitude: ${lat.toFixed(6)}<br>Longitude: ${lon.toFixed(6)}`;
+                document.getElementById('accuracy').textContent = 
+                    `📡 Accuracy: Within ${Math.round(accuracy)} meters`;
+                
+                // Get location name
+                getLocationName(lat, lon);
+                
+                document.getElementById('result').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+            }
+
+            async function getLocationName(lat, lon) {
+                try {
+                    const response = await fetch(
+                        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=en`,
+                        {
+                            headers: {
+                                'User-Agent': 'LocationDetector/1.0'
+                            }
+                        }
+                    );
                     
-                    // Store in localStorage temporarily
-                    localStorage.setItem('streamlit_location_data', JSON.stringify({{
-                        lat: lat,
-                        lon: lon,
-                        accuracy: accuracy,
-                        timestamp: Date.now()
-                    }}));
-                    
-                    // Trigger a page refresh to update Streamlit
-                    window.location.reload();
-                }},
-                function(error) {{
-                    let errorMessage = 'Error getting location: ';
-                    switch(error.code) {{
-                        case error.PERMISSION_DENIED:
-                            errorMessage += 'User denied the request for geolocation. Please enable location access and try again.';
-                            break;
-                        case error.POSITION_UNAVAILABLE:
-                            errorMessage += 'Location information is unavailable. Please check your device settings.';
-                            break;
-                        case error.TIMEOUT:
-                            errorMessage += 'The request to get user location timed out. Please try again.';
-                            break;
-                        default:
-                            errorMessage += 'An unknown error occurred.';
-                    }}
-                    
-                    localStorage.setItem('streamlit_location_error', errorMessage);
-                    window.location.reload();
-                }},
-                {{
+                    if (response.ok) {
+                        const data = await response.json();
+                        const address = data.address || {};
+                        
+                        const city = address.city || address.town || address.village || address.hamlet;
+                        const state = address.state || address.region;
+                        const country = address.country;
+                        
+                        let locationParts = [];
+                        if (city) locationParts.push(city);
+                        if (state && state !== city) locationParts.push(state);
+                        if (country && country !== state) locationParts.push(country);
+                        
+                        const locationName = locationParts.length > 0 ? locationParts.join(', ') : 'Unknown location';
+                        document.getElementById('locationName').innerHTML = `<h3>${locationName}</h3>`;
+                    } else {
+                        document.getElementById('locationName').innerHTML = '<h3>Location detected</h3>';
+                    }
+                } catch (error) {
+                    document.getElementById('locationName').innerHTML = '<h3>Location detected</h3>';
+                }
+            }
+
+            function getLocation() {
+                if (!navigator.geolocation) {
+                    showError('Geolocation is not supported by this browser.');
+                    return;
+                }
+
+                showLoading();
+
+                const options = {
                     enableHighAccuracy: true,
                     timeout: 15000,
                     maximumAge: 0
-                }}
-            );
-        }} else {{
-            localStorage.setItem('streamlit_location_error', 'Geolocation is not supported by this browser.');
-            window.location.reload();
-        }}
-    }}
-    
-    // Auto-run if we're in detection mode
-    if (localStorage.getItem('streamlit_detecting_location') === 'true') {{
-        localStorage.removeItem('streamlit_detecting_location');
-        getLocationData();
-    }}
-    </script>
-    """
-    return location_js
+                };
 
-def check_for_location_data():
-    """Check if location data is available from JavaScript"""
-    check_js = """
-    <script>
-    // Check for location data
-    const locationData = localStorage.getItem('streamlit_location_data');
-    const locationError = localStorage.getItem('streamlit_location_error');
-    
-    if (locationData) {
-        // Clear the data after reading
-        localStorage.removeItem('streamlit_location_data');
-        
-        // Send data to Streamlit via a form
-        const data = JSON.parse(locationData);
-        const form = document.createElement('form');
-        form.method = 'POST';
-        form.style.display = 'none';
-        
-        const latInput = document.createElement('input');
-        latInput.name = 'lat';
-        latInput.value = data.lat;
-        form.appendChild(latInput);
-        
-        const lonInput = document.createElement('input');
-        lonInput.name = 'lon';
-        lonInput.value = data.lon;
-        form.appendChild(lonInput);
-        
-        const accInput = document.createElement('input');
-        accInput.name = 'accuracy';
-        accInput.value = data.accuracy;
-        form.appendChild(accInput);
-        
-        document.body.appendChild(form);
-        
-        // Update URL with parameters
-        const params = new URLSearchParams(window.location.search);
-        params.set('lat', data.lat);
-        params.set('lon', data.lon);
-        params.set('accuracy', data.accuracy);
-        window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
-        
-        // Trigger rerun
-        window.location.reload();
-    } else if (locationError) {
-        localStorage.removeItem('streamlit_location_error');
-        
-        // Update URL with error
-        const params = new URLSearchParams(window.location.search);
-        params.set('error', encodeURIComponent(locationError));
-        window.history.replaceState({}, '', `${window.location.pathname}?${params}`);
-        
-        // Trigger rerun
-        window.location.reload();
-    }
-    </script>
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        const accuracy = position.coords.accuracy;
+                        showResult(lat, lon, accuracy);
+                    },
+                    function(error) {
+                        let errorMessage = 'Error getting location: ';
+                        switch(error.code) {
+                            case error.PERMISSION_DENIED:
+                                errorMessage += 'Permission denied. Please enable location access and try again.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                errorMessage += 'Location information is unavailable. Please check your device settings.';
+                                break;
+                            case error.TIMEOUT:
+                                errorMessage += 'Request timed out. Please try again.';
+                                break;
+                            default:
+                                errorMessage += 'An unknown error occurred.';
+                        }
+                        showError(errorMessage);
+                    },
+                    options
+                );
+            }
+
+            function copyCoordinates() {
+                if (currentLat && currentLon) {
+                    const text = `${currentLat}, ${currentLon}`;
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('Coordinates copied to clipboard!');
+                    }).catch(() => {
+                        // Fallback for older browsers
+                        const textArea = document.createElement('textarea');
+                        textArea.value = text;
+                        document.body.appendChild(textArea);
+                        textArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(textArea);
+                        alert('Coordinates copied to clipboard!');
+                    });
+                }
+            }
+
+            function openInMaps() {
+                if (currentLat && currentLon) {
+                    window.open(`https://www.openstreetmap.org/?mlat=${currentLat}&mlon=${currentLon}#map=16/${currentLat}/${currentLon}`, '_blank');
+                }
+            }
+        </script>
+    </body>
+    </html>
     """
-    html(check_js, height=0)
+    return location_html
 
 def main():
     st.set_page_config(
         page_title="Precise Location Detector",
         page_icon="📍",
-        layout="centered"
+        layout="wide"
     )
     
     st.title("📍 Precise Location Detector")
-    st.write("This app detects your current location using your browser's geolocation capabilities.")
     
-    # Inject the location detection script
-    html(inject_location_script(), height=0)
+    # Create tabs for different approaches
+    tab1, tab2, tab3 = st.tabs(["🌐 Web Detector", "📊 Manual Input", "ℹ️ Instructions"])
     
-    # Check for location data from URL parameters
-    query_params = st.query_params
-    lat = query_params.get('lat')
-    lon = query_params.get('lon')
-    accuracy = query_params.get('accuracy')
-    error = query_params.get('error')
-    
-    if lat and lon:
-        try:
-            lat = float(lat)
-            lon = float(lon)
-            accuracy = float(accuracy) if accuracy else 'N/A'
-            
-            # Get location details using reverse geocoding
-            with st.spinner('Getting location details...'):
-                address = get_location_from_coords(lat, lon)
-                location_name = get_formatted_location(address)
-            
-            # Display the location
-            st.success("Location detected successfully!")
-            st.markdown(f"""
-            <div style='text-align: center; margin: 20px 0;'>
-                <h2>Your current location is:</h2>
-                <h1 style='color: #1E88E5; margin: 15px 0;'>{location_name}</h1>
-                <p>📡 Accuracy: Within {int(accuracy)} meters</p>
-            </div>
-            """, unsafe_allow_html=True)
-            
-            # Show coordinates
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("Latitude", f"{lat:.6f}")
-            with col2:
-                st.metric("Longitude", f"{lon:.6f}")
-            
-            # Show the map
-            st.subheader("📍 Location on Map")
-            map_html = f"""
-            <div style='width: 100%; height: 400px; margin: 20px 0; border-radius: 10px; overflow: hidden; border: 1px solid #ddd;'>
-                <iframe 
-                    width="100%" 
-                    height="100%" 
-                    frameborder="0" 
-                    scrolling="no" 
-                    marginheight="0" 
-                    marginwidth="0" 
-                    src="https://www.openstreetmap.org/export/embed.html?bbox={lon-0.01}%2C{lat-0.01}%2C{lon+0.01}%2C{lat+0.01}&amp;layer=mapnik&amp;marker={lat}%2C{lon}"
-                    style="border: 0;">
-                </iframe>
-            </div>
-            <div style='text-align: center; margin-bottom: 20px;'>
-                <a href="https://www.openstreetmap.org/?mlat={lat}&amp;mlon={lon}#map=16/{lat}/{lon}" target="_blank" style='color: #1E88E5; text-decoration: none;'>
-                    🗺️ View Larger Map (OpenStreetMap)
-                </a>
-            </div>
-            """
-            st.markdown(map_html, unsafe_allow_html=True)
-            
-            # Show raw address data
-            with st.expander("🔍 View detailed location information"):
-                st.json(address)
-            
-            # Show raw coordinates
-            with st.expander("📊 Raw coordinate data"):
-                st.json({
-                    "latitude": lat,
-                    "longitude": lon,
-                    "accuracy_meters": accuracy
-                })
-            
-            # Clear button
-            if st.button("🔄 Detect Location Again"):
-                # Clear query params and reload
-                st.query_params.clear()
-                st.rerun()
-                
-        except (ValueError, TypeError) as e:
-            st.error(f"Invalid location data received: {e}")
-            
-    elif error:
-        st.error(error)
+    with tab1:
         st.markdown("""
-        ### 🛠️ Troubleshooting Tips:
-        
-        1. **Check browser permissions**: Make sure location access is enabled for this website
-        2. **Enable location services**: Ensure your device's location services are turned on
-        3. **Try a different browser**: Some browsers have stricter location policies
-        4. **Use HTTPS**: Location services work better on secure connections
-        5. **Check network connection**: Make sure you have a stable internet connection
+        ### Browser-Based Location Detection
+        This detector works entirely in your browser and provides the most accurate results.
         """)
         
-        # Clear error and try again button
-        if st.button("🔄 Try Again"):
-            st.query_params.clear()
-            st.rerun()
-    
-    else:
-        # Main location detection interface
-        st.markdown("""
-        <div style='text-align: center; margin: 30px 0;'>
-            <p style='font-size: 18px; color: #666; margin-bottom: 20px;'>
-                Click the button below to detect your precise location
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
+        # Display the location detector in an iframe
+        html(create_location_detector(), height=600)
         
-        # Location detection button
-        if st.button("🌍 Detect My Precise Location", type="primary"):
-            # Set flag for JavaScript to detect location
-            detect_js = """
-            <script>
-            localStorage.setItem('streamlit_detecting_location', 'true');
-            window.location.reload();
-            </script>
-            """
-            html(detect_js, height=0)
-            st.info("🔄 Initializing location detection...")
-    
-    # Check for any pending location data
-    check_for_location_data()
-    
-    # Add styling
-    st.markdown("""
-    <style>
-        .stButton > button {
-            width: 100%;
-            background-color: #1E88E5;
-            color: white;
-            font-weight: bold;
-            border: none;
-            padding: 15px 30px;
-            border-radius: 25px;
-            font-size: 18px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s;
-        }
-        .stButton > button:hover {
-            background-color: #1565C0;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
-        }
-        .stAlert {
-            border-radius: 10px;
-        }
-        .stMetric {
-            background-color: #f8f9fa;
-            padding: 10px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .stExpander {
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            margin: 10px 0;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-    
-    # Add instructions
-    st.markdown("---")
-    st.markdown("### ℹ️ How it works:")
-    st.markdown("""
-    1. Click the "Detect My Precise Location" button
-    2. Allow location access when prompted by your browser
-    3. Your precise location will be shown with coordinates and map
-    
-    **🔒 Privacy Note:** Your location data is processed entirely in your browser and 
-    never stored on any server. The app only uses your location to show you where you are.
-    """)
-    
-    # Add browser compatibility info
-    with st.expander("🌐 Browser Compatibility"):
         st.markdown("""
-        **Supported Browsers:**
-        - ✅ Chrome/Chromium (recommended)
-        - ✅ Firefox
-        - ✅ Safari
-        - ✅ Edge
-        - ⚠️ Internet Explorer (limited support)
+        ---
+        **🔒 Privacy:** Your location is processed entirely in your browser. No data is sent to servers except for the optional address lookup.
+        """)
+    
+    with tab2:
+        st.markdown("""
+        ### Manual Coordinate Input
+        If the browser detection doesn't work, you can manually enter coordinates.
+        """)
         
-        **Requirements:**
-        - HTTPS connection (for security)
-        - Location services enabled on device
-        - JavaScript enabled in browser
+        col1, col2 = st.columns(2)
+        with col1:
+            manual_lat = st.number_input("Latitude", value=0.0, format="%.6f", help="Enter latitude (-90 to 90)")
+        with col2:
+            manual_lon = st.number_input("Longitude", value=0.0, format="%.6f", help="Enter longitude (-180 to 180)")
+        
+        if st.button("🔍 Look Up Location", type="primary"):
+            if manual_lat != 0.0 or manual_lon != 0.0:
+                with st.spinner('Getting location details...'):
+                    address = get_location_from_coords(manual_lat, manual_lon)
+                    location_name = get_formatted_location(address)
+                
+                st.success("Location found!")
+                st.markdown(f"""
+                <div style='text-align: center; margin: 20px 0;'>
+                    <h2>Location:</h2>
+                    <h1 style='color: #1E88E5; margin: 15px 0;'>{location_name}</h1>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show coordinates
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric("Latitude", f"{manual_lat:.6f}")
+                with col2:
+                    st.metric("Longitude", f"{manual_lon:.6f}")
+                
+                # Show map
+                map_html = f"""
+                <div style='width: 100%; height: 400px; margin: 20px 0; border-radius: 10px; overflow: hidden; border: 1px solid #ddd;'>
+                    <iframe 
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        scrolling="no" 
+                        marginheight="0" 
+                        marginwidth="0" 
+                        src="https://www.openstreetmap.org/export/embed.html?bbox={manual_lon-0.01}%2C{manual_lat-0.01}%2C{manual_lon+0.01}%2C{manual_lat+0.01}&amp;layer=mapnik&amp;marker={manual_lat}%2C{manual_lon}"
+                        style="border: 0;">
+                    </iframe>
+                </div>
+                """
+                st.markdown(map_html, unsafe_allow_html=True)
+                
+                # Show address details
+                with st.expander("🔍 Detailed location information"):
+                    st.json(address)
+            else:
+                st.warning("Please enter valid coordinates")
+    
+    with tab3:
+        st.markdown("""
+        ### 📱 How to Use This App
+        
+        #### Browser Detection (Recommended)
+        1. Go to the **Web Detector** tab
+        2. Click "Detect My Location" 
+        3. Allow location access when prompted
+        4. View your precise location with map
+        
+        #### Manual Input (Backup)
+        1. Go to the **Manual Input** tab
+        2. Enter your latitude and longitude coordinates
+        3. Click "Look Up Location" to see details
+        
+        ### 🛠️ Troubleshooting
+        
+        **If location detection fails:**
+        - ✅ Enable location services on your device
+        - ✅ Allow location access for your browser
+        - ✅ Use HTTPS (secure connection)
+        - ✅ Try a different browser (Chrome recommended)
+        - ✅ Check if JavaScript is enabled
+        
+        **Getting your coordinates manually:**
+        - Use your phone's GPS app
+        - Check Google Maps (right-click → "What's here?")
+        - Use any GPS device or app
+        
+        ### 🌐 Browser Compatibility
+        
+        | Browser | Support | Notes |
+        |---------|---------|-------|
+        | Chrome | ✅ Excellent | Recommended |
+        | Firefox | ✅ Excellent | Works great |
+        | Safari | ✅ Good | May need permission |
+        | Edge | ✅ Good | Works well |
+        | Mobile | ✅ Excellent | Usually most accurate |
+        
+        ### 🔒 Privacy & Security
+        
+        - **No data storage**: Your location is never saved
+        - **Browser-only**: Processing happens in your browser
+        - **Optional lookup**: Address lookup uses OpenStreetMap
+        - **No tracking**: No cookies or user tracking
+        - **Open source**: Code is transparent and auditable
+        
+        ### 📍 Accuracy Information
+        
+        - **GPS devices**: Usually 3-5 meters
+        - **Smartphones**: Usually 5-10 meters  
+        - **WiFi/Cell**: Usually 10-100+ meters
+        - **Desktop**: Varies widely (IP-based fallback)
+        
+        For best accuracy, use a smartphone with GPS enabled.
         """)
 
 if __name__ == "__main__":
