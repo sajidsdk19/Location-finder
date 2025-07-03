@@ -528,7 +528,7 @@ def main():
         
         ### 🏆 Credits & Development
         
-        **Developed by:** Aqib Ahmed  
+        **Developed by:** Sajid Khan
         **Website:** [solutions.techscape.pk](https://solutions.techscape.pk)  
         **GitHub:** [@sajidsdk19](https://github.com/sajidsdk19)  
         
