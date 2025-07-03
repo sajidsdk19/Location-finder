@@ -523,6 +523,21 @@ def main():
         ### 🔄 Version
         Current version: 1.0.0  
         Last updated: July 2024
+        
+        ---
+        
+        ### 🏆 Credits & Development
+        
+        **Developed by:** Aqib Ahmed  
+        **Website:** [solutions.techscape.pk](https://solutions.techscape.pk)  
+        **GitHub:** [@sajidsdk19](https://github.com/sajidsdk19)  
+        
+        This plugin is proudly developed and maintained by Solutions Techscape.  
+        For custom development and enterprise solutions, please visit our website.
+        
+        ---
+        
+        *Thank you for using our Location Detector Plugin!*
         """)
 
 if __name__ == "__main__":
