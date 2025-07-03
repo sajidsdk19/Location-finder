@@ -312,7 +312,35 @@ def main():
     st.title("📍 Precise Location Detector")
     
     # Create tabs for different approaches
-    tab1, tab2, tab3, tab4 = st.tabs(["🌐 Web Detector", "📊 Manual Input", "ℹ️ Instructions", "🔌 WordPress Plugin"])
+    st.markdown("""
+    <style>
+        .stTabs [data-baseweb="tab-list"] {
+            gap: 8px;
+        }
+        .stTabs [data-baseweb="tab"] {
+            height: 50px;
+            white-space: pre;
+            background-color: #f0f2f6;
+            border-radius: 4px 4px 0 0;
+            gap: 1px;
+            padding: 0 16px;
+        }
+        .stTabs [data-baseweb="tab"]:hover {
+            background-color: #e1e4e8;
+        }
+        .stTabs [data-baseweb="tab"][aria-selected="true"] {
+            background-color: white;
+            border-bottom: 2px solid #1E88E5;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+    
+    tab1, tab2, tab3, tab4 = st.tabs([
+        "🌐 Web Detector", 
+        "📊 Manual Input", 
+        "ℹ️ Instructions", 
+        "🔌 WordPress Plugin"
+    ])
     
     with tab1:
         st.markdown("""
@@ -442,25 +470,32 @@ def main():
         """)
     
     with tab4:
+        st.markdown("# 🌍 WordPress Location Detector Plugin")
         st.markdown("""
-        # 🌍 WordPress Location Detector Plugin
-        
         Enhance your WordPress website with our easy-to-use location detection plugin. 
         This plugin allows you to show location-based content to your visitors.
+        """)
         
-        ### Features:
-        - ✅ Simple installation and setup
-        - ✅ Automatic location detection
-        - ✅ Mobile-friendly design
-        - ✅ Lightweight and fast
-        - ✅ Compatible with all modern WordPress themes
+        st.markdown("### 🚀 Features")
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown("""
+            - ✅ Simple installation and setup
+            - ✅ Automatic location detection
+            - ✅ Mobile-friendly design
+            - ✅ Lightweight and fast
+            - ✅ Compatible with all modern themes
+            """)
         
-        ### Requirements:
+        st.markdown("### 📋 Requirements")
+        st.markdown("""
         - WordPress 5.0 or higher
         - PHP 7.4 or higher
         - JavaScript enabled in visitor's browser
+        """)
         
-        ### Installation:
+        st.markdown("### 📥 Installation")
+        st.markdown("""
         1. Download the plugin zip file below
         2. Go to WordPress Admin > Plugins > Add New
         3. Click "Upload Plugin" and select the downloaded zip file
@@ -468,21 +503,25 @@ def main():
         5. Configure the settings in WordPress admin
         """)
         
-        # Add download button for the plugin
-        with open("geocity.zip", "rb") as file:
-            btn = st.download_button(
-                label="⬇️ Download WordPress Plugin",
-                data=file,
-                file_name="geocity-location-detector.zip",
-                mime="application/zip"
-            )
+        # Add download button for the plugin with error handling
+        try:
+            with open("geocity.zip", "rb") as file:
+                btn = st.download_button(
+                    label="⬇️ Download WordPress Plugin",
+                    data=file,
+                    file_name="geocity-location-detector.zip",
+                    mime="application/zip"
+                )
+        except Exception as e:
+            st.error(f"Error loading plugin file: {e}")
+            st.info("Please make sure 'geocity.zip' exists in the project directory.")
         
         st.markdown("### 📝 Support")
         st.markdown("""
         Need help with the plugin? Contact our support team at support@example.com
         
         ### 🔄 Version
-        Current version: 1.0.0
+        Current version: 1.0.0  
         Last updated: July 2024
         """)
 
