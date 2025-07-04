@@ -528,12 +528,13 @@ def main():
         
         ### 🏆 Credits & Development
         
-        **Developed by:** Sajid Khan
-        **Website:** [solutions.techscape.pk](https://solutions.techscape.pk)  
+        **Developed by:** Sajid Khan  
+        **Personal Website:** [sajidkhan.me](https://sajidkhan.me)  
+        **Company Website:** [solutions.techscape.pk](https://solutions.techscape.pk)  
         **GitHub:** [@sajidsdk19](https://github.com/sajidsdk19)  
         
-        This plugin is proudly developed and maintained by Solutions Techscape.  
-        For custom development and enterprise solutions, please visit our website.
+        This plugin is proudly developed and maintained by Sajid Khan.  
+        For custom development and enterprise solutions, please visit my website.
         
         ---
         
